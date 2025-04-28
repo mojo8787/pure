@@ -1,0 +1,102 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kong:
+    image: kong:2.1
+    container_name: kong
+    ports:
+      - "8000:8000" # Kong proxy
+      - "8001:8001" # Kong admin API
+      - "8443:8443" # Kong proxy (HTTPS)
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+    volumes:
+      - ./kong:/etc/kong
+
+  supabase-auth:
+    image: supabase/gotrue:latest
+    container_name: supabase-auth
+    depends_on:
+      - postgres
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres?sslmode=disable
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: http://localhost:3000/*
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_DISABLE_SIGNUP: "false"
+    ports:
+      - "9999:9999"
+
+  supabase-rest:
+    image: postgrest/postgrest:latest
+    container_name: supabase-rest
+    depends_on:
+      - postgres
+    environment:
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
+    ports:
+      - "3000:3000"
+
+  supabase-realtime:
+    image: supabase/realtime:latest
+    container_name: supabase-realtime
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_SSL: "false"
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
+    ports:
+      - "4000:4000"
+
+  supabase-storage:
+    image: supabase/storage-api:latest
+    container_name: supabase-storage
+    depends_on:
+      - postgres
+    environment:
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIn0.ZopqoUt20nEV9cklpv_ZJFJpr0vPpGvZtLNJR-cni5Y
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUifQ.M1yJUoQKt0Q1S4qdDgPWYgc3DFMVv9wy_8dJr2SvQQw
+      POSTGREST_URL: http://supabase-rest:3000
+      POSTGRES_CONNECTION: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://supabase-imgproxy:5001
+    ports:
+      - "5000:5000"
+
+volumes:
+  postgres_data: 
