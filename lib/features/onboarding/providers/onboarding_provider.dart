@@ -1,41 +1,37 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 part 'onboarding_provider.g.dart';
 
 const String _hasSeenOnboardingKey = 'has_seen_onboarding';
 
 /// Provider to check if user has seen the onboarding
-@riverpod
-Future<bool> hasSeenOnboarding(HasSeenOnboardingRef ref) async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_hasSeenOnboardingKey) ?? false;
-}
-
-/// Provider to set onboarding as seen
-@riverpod
-class OnboardingNotifier extends _$OnboardingNotifier {
+@Riverpod(keepAlive: true)
+class HasSeenOnboarding extends _$HasSeenOnboarding {
   @override
-  FutureOr<void> build() {
-    // Nothing to initialize
+  Future<bool> build() async {
+    debugPrint('HasSeenOnboarding: Building provider');
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeen = prefs.getBool(_hasSeenOnboardingKey) ?? false;
+    debugPrint('HasSeenOnboarding: Value from storage: $hasSeen');
+    return hasSeen;
   }
 
-  /// Mark onboarding as completed
-  Future<void> setOnboardingAsCompleted() async {
+  Future<void> setOnboardingCompleted() async {
+    debugPrint('HasSeenOnboarding: Setting onboarding as completed');
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
+    await prefs.setBool(_hasSeenOnboardingKey, true);
+    state = const AsyncData(true);
+    debugPrint('HasSeenOnboarding: Onboarding marked as completed');
   }
 
-  /// Check if onboarding has been completed
-  Future<bool> isOnboardingCompleted() async {
+  Future<void> reset() async {
+    debugPrint('HasSeenOnboarding: Resetting onboarding status');
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('onboarding_completed') ?? false;
-  }
-
-  /// Reset onboarding status (for testing)
-  Future<void> resetOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('onboarding_completed');
+    await prefs.remove(_hasSeenOnboardingKey);
+    state = const AsyncData(false);
+    debugPrint('HasSeenOnboarding: Onboarding status reset');
   }
 }
 
