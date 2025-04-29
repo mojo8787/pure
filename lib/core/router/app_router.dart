@@ -8,6 +8,7 @@ import 'package:pureflow/features/authentication/presentation/screens/login_scre
 import 'package:pureflow/features/authentication/presentation/screens/signup_screen.dart';
 import 'package:pureflow/features/authentication/presentation/screens/verification_screen.dart';
 import 'package:pureflow/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:pureflow/features/dashboard/presentation/screens/schedule_visit_screen.dart';
 import 'package:pureflow/features/todo/presentation/components/todo_screen.dart';
 import 'package:pureflow/features/todo/presentation/screens/todo_detail_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -124,6 +125,10 @@ GoRouter appRouter(AppRouterRef ref) {
           final todoId = state.pathParameters['id']!;
           return TodoDetailScreen(todoId: todoId);
         },
+      ),
+      GoRoute(
+        path: Routes.scheduleVisit,
+        builder: (context, state) => const ScheduleVisitScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

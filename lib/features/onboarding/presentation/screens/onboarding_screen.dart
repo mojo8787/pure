@@ -1,119 +1,166 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pureflow/core/router/routes.dart';
+import 'package:pureflow/features/onboarding/models/onboarding_content.dart';
 import 'package:pureflow/features/onboarding/providers/onboarding_provider.dart';
-import 'package:pureflow/shared/constants/colors.dart';
-import 'package:pureflow/features/onboarding/presentation/widgets/onboarding_page.dart';
 
-class OnboardingScreen extends HookConsumerWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pageController = usePageController();
-    final currentPage = useState(0);
-    
-    final onboardingPages = [
-      const OnboardingPage(
-        imagePath: 'assets/images/why_ro.webp',
-        title: 'Pure Water, Healthier Life',
-        description: 'Reverse Osmosis filtration removes 99% of contaminants, '
-            'providing the cleanest water for you and your family.',
-      ),
-      const OnboardingPage(
-        imagePath: 'assets/images/how_it_works.webp',
-        title: 'Hassle-Free Experience',
-        description: 'Subscribe monthly for professional installation, '
-            'regular maintenance, and filter replacements — all included.',
-      ),
-    ];
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    ref.read(onboardingProgressProvider.notifier).state = index;
+  }
+
+  void _nextPage() {
+    if (_pageController.page!.round() < OnboardingData.screens.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      _completeOnboarding();
+    }
+  }
+
+  void _previousPage() {
+    if (_pageController.page!.round() > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  Future<void> _completeOnboarding() async {
+    await ref.read(onboardingNotifierProvider.notifier).setOnboardingAsCompleted();
+    if (mounted) {
+      context.go(Routes.subscriptions);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentPage = ref.watch(onboardingProgressProvider);
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: PageView(
-                controller: pageController,
-                onPageChanged: (index) => currentPage.value = index,
-                children: onboardingPages,
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                itemCount: OnboardingData.screens.length,
+                itemBuilder: (context, index) {
+                  final content = OnboardingData.screens[index];
+                  return _OnboardingPage(content: content);
+                },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  // Page dots indicator
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
-                      onboardingPages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                      OnboardingData.screens.length,
+                      (index) => Container(
+                        width: 8,
                         height: 8,
-                        width: currentPage.value == index ? 24 : 8,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
                         decoration: BoxDecoration(
-                          color: currentPage.value == index
-                              ? AppColors.primary
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(4),
+                          shape: BoxShape.circle,
+                          color: currentPage == index
+                              ? Theme.of(context).primaryColor
+                              : Colors.grey.shade300,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (currentPage.value < onboardingPages.length - 1) {
-                          // Go to next page
-                          await pageController.animateToPage(
-                            currentPage.value + 1,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        } else {
-                          // Mark onboarding as seen and go to auth screen
-                          await ref
-                              .read(onboardingNotifierProvider.notifier)
-                              .setOnboardingAsSeen();
-                          if (context.mounted) {
-                            context.go(Routes.auth);
-                          }
-                        }
-                      },
-                      child: Text(
-                        currentPage.value < onboardingPages.length - 1
-                            ? 'Next'
-                            : 'Get Started',
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (currentPage > 0)
+                        TextButton(
+                          onPressed: _previousPage,
+                          child: const Text('Previous'),
+                        )
+                      else
+                        const SizedBox(width: 80),
+                      ElevatedButton(
+                        onPressed: _nextPage,
+                        child: Text(
+                          currentPage == OnboardingData.screens.length - 1
+                              ? 'Get Started'
+                              : 'Next',
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  if (currentPage.value < onboardingPages.length - 1) ...[
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () async {
-                        // Skip onboarding
-                        await ref
-                            .read(onboardingNotifierProvider.notifier)
-                            .setOnboardingAsSeen();
-                        if (context.mounted) {
-                          context.go(Routes.auth);
-                        }
-                      },
-                      child: const Text('Skip'),
-                    ),
-                  ],
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OnboardingPage extends StatelessWidget {
+  final OnboardingContent content;
+
+  const _OnboardingPage({required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            content.imagePath,
+            height: 300,
+            errorBuilder: (context, error, stackTrace) => const Icon(
+              Icons.water_drop,
+              size: 200,
+              color: Colors.blue,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            content.title,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            content.description,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.grey[600],
+                ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

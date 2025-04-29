@@ -49,4 +49,7 @@ class Routes {
   static const adminTickets = '/admin/tickets';
   static const adminInvoices = '/admin/invoices';
   static const adminSettings = '/admin/settings';
+  
+  // New route
+  static const String scheduleVisit = '/schedule-visit';
 } 
