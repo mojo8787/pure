@@ -52,6 +52,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   // The real signup method for production
   Future<void> _handleRealSignup() async {
     if (_formKey.currentState?.validate() != true) {
+      print('DEBUG: Form validation failed');
       return;
     }
 
@@ -60,7 +61,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _errorMessage = null;
     });
 
+    print('DEBUG: Starting signup process');
+    print('DEBUG: Email: ${_emailController.text}');
+    print('DEBUG: Name: ${_nameController.text}');
+
     try {
+      print('DEBUG: Attempting to sign up with Supabase');
       // Attempt to sign up with Supabase
       final AuthResponse response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text,
@@ -71,24 +77,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         emailRedirectTo: null, // No redirect for development
       );
 
+      print('DEBUG: Supabase signup response received');
+      print('DEBUG: User: ${response.user?.id}');
+      print('DEBUG: Session: ${response.session?.accessToken}');
+
       if (!mounted) return;
 
       // Check if signup was successful
       if (response.user != null) {
+        print('DEBUG: Signup successful, navigating to verification screen');
         // Navigate to the verification screen
         context.go('${Routes.verification}?email=${Uri.encodeComponent(_emailController.text)}');
       } else {
+        print('DEBUG: Signup failed - no user returned');
         setState(() {
           _errorMessage = 'Failed to create account. Please try again.';
           _isLoading = false;
         });
       }
     } on AuthException catch (e) {
+      print('DEBUG: AuthException: ${e.message}');
       setState(() {
         _errorMessage = e.message;
         _isLoading = false;
       });
     } catch (e) {
+      print('DEBUG: Unexpected error: $e');
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
         _isLoading = false;
@@ -99,10 +113,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   // Use the development handler for now
   Future<void> _handleSignup() async {
     // For development, we'll use the simplified flow
-    await _handleDevelopmentSignup();
+    // await _handleDevelopmentSignup();
     
     // For production, uncomment this line and comment out the one above
-    // await _handleRealSignup();
+    await _handleRealSignup();
   }
 
   @override

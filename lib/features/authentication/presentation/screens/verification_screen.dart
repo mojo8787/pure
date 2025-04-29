@@ -40,29 +40,31 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
 
   Future<void> _checkSupabaseSession() async {
     try {
+      print('DEBUG: Checking Supabase session');
       final session = Supabase.instance.client.auth.currentSession;
       final user = Supabase.instance.client.auth.currentUser;
       
-      _addDebugLog('Session check - Has session: ${session != null}');
-      _addDebugLog('User check - Has user: ${user != null}');
+      print('DEBUG: Session status - Has session: ${session != null}');
+      print('DEBUG: User status - Has user: ${user != null}');
       
       if (user != null) {
-        _addDebugLog('User ID: ${user.id}');
-        _addDebugLog('Email confirmed: ${user.emailConfirmedAt != null}');
+        print('DEBUG: User ID: ${user.id}');
+        print('DEBUG: Email confirmed: ${user.emailConfirmedAt != null}');
+        print('DEBUG: User metadata: ${user.userMetadata}');
       }
     } catch (e) {
-      _addDebugLog('Error checking session: $e');
+      print('DEBUG: Error checking session: $e');
     }
   }
 
   Future<void> _testSupabaseConnection() async {
     try {
-      _addDebugLog('Testing Supabase connection...');
+      print('DEBUG: Testing Supabase connection...');
       // Use a simpler approach to test connection - just check if we can access the API
       final result = await Supabase.instance.client.from('_dummy_').select().limit(1).maybeSingle();
-      _addDebugLog('Connection test result: ${result != null ? 'Success (got response)' : 'Success (empty response)'}');
+      print('DEBUG: Connection test result: ${result != null ? 'Success (got response)' : 'Success (empty response)'}');
     } catch (e) {
-      _addDebugLog('Connection test error: $e');
+      print('DEBUG: Connection test error: $e');
     }
   }
 
@@ -99,7 +101,9 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
       _errorMessage = null;
     });
 
-    _addDebugLog('Attempting to resend verification email via Supabase');
+    print('DEBUG: Attempting to resend verification email');
+    print('DEBUG: Email: ${widget.email}');
+
     try {
       // Resend verification email using Supabase
       await Supabase.instance.client.auth.resend(
@@ -108,7 +112,7 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
         emailRedirectTo: null, // No redirect for development
       );
 
-      _addDebugLog('Supabase resend API call successful');
+      print('DEBUG: Verification email resent successfully');
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,12 +122,12 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
         ),
       );
     } on AuthException catch (e) {
-      _addDebugLog('AuthException: ${e.message}');
+      print('DEBUG: AuthException during resend: ${e.message}');
       setState(() {
         _errorMessage = e.message;
       });
     } catch (e) {
-      _addDebugLog('Unexpected error: $e');
+      print('DEBUG: Unexpected error during resend: $e');
       setState(() {
         _errorMessage = 'An unexpected error occurred: $e';
       });
