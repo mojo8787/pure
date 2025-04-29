@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pureflow/core/router/routes.dart';
+import 'package:pureflow/core/services/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -9,6 +10,8 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateChangesProvider).valueOrNull;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
@@ -47,8 +50,8 @@ class DashboardScreen extends ConsumerWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
+            DrawerHeader(
+              decoration: const BoxDecoration(
                 color: Colors.blue,
               ),
               child: Column(
@@ -57,23 +60,30 @@ class DashboardScreen extends ConsumerWidget {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.blue,
-                    ),
+                    child: user?.avatarUrl != null
+                        ? Image.network(
+                            user!.avatarUrl!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          )
+                        : const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.blue,
+                          ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Text(
-                    'Demo User',
-                    style: TextStyle(
+                    user?.fullName ?? 'User',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                     ),
                   ),
                   Text(
-                    'demo@example.com',
-                    style: TextStyle(
+                    user?.email ?? '',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                     ),
@@ -149,9 +159,9 @@ class DashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Welcome, Demo User!',
-              style: TextStyle(
+            Text(
+              'Welcome, ${user?.fullName ?? 'User'}!',
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
@@ -198,31 +208,27 @@ class DashboardScreen extends ConsumerWidget {
           value: '1',
           icon: Icons.water_drop,
           color: Colors.blue,
-          onTap: () => context.go(Routes.subscriptions),
         ),
         _buildSummaryCard(
           context,
-          title: 'Next Billing',
-          value: 'May 15',
+          title: 'Next Visit',
+          value: 'Tomorrow',
           icon: Icons.calendar_today,
           color: Colors.green,
-          onTap: () {},
         ),
         _buildSummaryCard(
           context,
-          title: 'Water Quality',
-          value: 'Excellent',
-          icon: Icons.check_circle,
-          color: Colors.teal,
-          onTap: () {},
-        ),
-        _buildSummaryCard(
-          context,
-          title: 'Filter Status',
-          value: '85%',
-          icon: Icons.filter_alt,
+          title: 'Pending Invoices',
+          value: '0',
+          icon: Icons.receipt,
           color: Colors.orange,
-          onTap: () {},
+        ),
+        _buildSummaryCard(
+          context,
+          title: 'Open Tickets',
+          value: '0',
+          icon: Icons.support_agent,
+          color: Colors.purple,
         ),
       ],
     );
@@ -234,40 +240,105 @@ class DashboardScreen extends ConsumerWidget {
     required String value,
     required IconData icon,
     required Color color,
+  }) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        _buildActionCard(
+          context,
+          title: 'Schedule Visit',
+          icon: Icons.calendar_today,
+          color: Colors.blue,
+          onTap: () {
+            context.go(Routes.scheduleVisit);
+          },
+        ),
+        _buildActionCard(
+          context,
+          title: 'Request Support',
+          icon: Icons.support_agent,
+          color: Colors.purple,
+          onTap: () {
+            // TODO: Navigate to support screen
+          },
+        ),
+        _buildActionCard(
+          context,
+          title: 'View Invoices',
+          icon: Icons.receipt,
+          color: Colors.orange,
+          onTap: () {
+            // TODO: Navigate to invoices screen
+          },
+        ),
+        _buildActionCard(
+          context,
+          title: 'Manage Subscription',
+          icon: Icons.water_drop,
+          color: Colors.green,
+          onTap: () {
+            context.go(Routes.subscriptions);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
     required VoidCallback onTap,
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
+              Icon(icon, size: 32, color: color),
               const SizedBox(height: 8),
               Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
                 title,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                ),
+                style: Theme.of(context).textTheme.titleSmall,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -277,131 +348,23 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildQuickAction(
-          context,
-          icon: Icons.task_alt,
-          label: 'Todo List',
-          onTap: () => context.go(Routes.todos),
-        ),
-        _buildQuickAction(
-          context,
-          icon: Icons.support_agent,
-          label: 'Contact Support',
-          onTap: () {},
-        ),
-        _buildQuickAction(
-          context,
-          icon: Icons.schedule,
-          label: 'Schedule Service',
-          onTap: () {},
-        ),
-        _buildQuickAction(
-          context,
-          icon: Icons.report,
-          label: 'Report Issue',
-          onTap: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickAction(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+  Widget _buildRecentActivities(BuildContext context) {
+    return const Card(
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.blue.shade50,
-              child: Icon(
-                icon,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
+              'No recent activities',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildRecentActivities(BuildContext context) {
-    final activities = [
-      {
-        'title': 'Subscription Activated',
-        'description': 'Your Premium plan was activated',
-        'time': '2 days ago',
-        'icon': Icons.check_circle,
-        'color': Colors.green,
-      },
-      {
-        'title': 'Payment Successful',
-        'description': 'Monthly payment processed successfully',
-        'time': '2 days ago',
-        'icon': Icons.payment,
-        'color': Colors.blue,
-      },
-      {
-        'title': 'Filter Change Reminder',
-        'description': 'Schedule your next filter change',
-        'time': '1 week ago',
-        'icon': Icons.notifications,
-        'color': Colors.orange,
-      },
-    ];
-
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: activities.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final activity = activities[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: (activity['color'] as Color).withOpacity(0.2),
-              child: Icon(
-                activity['icon'] as IconData,
-                color: activity['color'] as Color,
-                size: 20,
-              ),
-            ),
-            title: Text(activity['title'] as String),
-            subtitle: Text(activity['description'] as String),
-            trailing: Text(
-              activity['time'] as String,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
-              ),
-            ),
-            onTap: () {},
-          );
-        },
       ),
     );
   }
